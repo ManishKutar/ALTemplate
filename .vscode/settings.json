@@ -1,0 +1,17 @@
+{
+    "al.enableCodeAnalysis": true,
+    "al.codeAnalyzers": [
+        "${CodeCop}",
+        "${UICop}"
+    ],
+    "CRS.FileNamePattern": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+    "CRS.FileNamePatternExtensions": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+    "CRS.FileNamePatternPageCustomizations": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+    "CRS.RenameWithGit": true,
+    "CRS.ObjectNameSuffix": "WIN",
+    "CRS.OnSaveAlFileAction": "Rename",
+    "alOutline.completionProviders": [
+        "VariableNamesWithType",
+        "VariableDataTypes"
+    ]
+}
