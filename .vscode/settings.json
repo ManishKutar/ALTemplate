@@ -8,7 +8,7 @@
     "CRS.FileNamePatternExtensions": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
     "CRS.FileNamePatternPageCustomizations": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
     "CRS.RenameWithGit": true,
-    "CRS.ObjectNameSuffix": "WIN",
+    "CRS.ObjectNameSuffix": " WIN",
     "CRS.OnSaveAlFileAction": "Rename",
     "alOutline.completionProviders": [
         "VariableNamesWithType",
