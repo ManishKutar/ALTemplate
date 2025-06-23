@@ -1,56 +1,122 @@
 trigger:
-  - main  # or any branch you want to trigger the pipeline
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+  paths:
+    include:
+      - 'src/**/*.al'
+    exclude:
+      - '*.md'
+      - 'docs/**'
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - 'src/**/*.al'
 
 pool:
-  vmImage: 'windows-latest'  # Use a Windows agent as we're running PowerShell
+  vmImage: 'windows-latest'
 
 variables:
   solution: '**/*.sln'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
-steps:
-- task: PowerShell@2
-  displayName: 'Install latest Pester'
-  inputs:
-    targetType: 'inline'
-    script: |
-      Install-Module -Name Pester -Force -SkipPublisherCheck
-      Import-Module Pester -PassThru
-- task: PowerShell@2
-  inputs:
-    targetType: 'inline'
-    script: |
-      $url = "https://raw.githubusercontent.com/WinHub001/pestertest/main/app.json.Tests.ps1"
-      $outputPath = "$(Build.SourcesDirectory)\app.json.Tests.ps1"
-      
-      Invoke-WebRequest -Uri $url -OutFile $outputPath
-      
-      if (Test-Path $outputPath) {
-        Write-Host "File downloaded successfully to $outputPath"
-      } else {
-        Write-Error "Failed to download file"
-        exit 1
-      }
-  displayName: 'Download File'
-  
-- task: PowerShell@2
-  displayName: 'Run Pester Tests'
-  inputs:
-    targetType: 'inline'
-    script: |
-      $result = Invoke-Pester -Path "$(System.DefaultWorkingDirectory)/app.json.Tests.ps1" -PassThru -OutputFormat NUnitXml -OutputFile TestResults/test-results.xml
-      if ($result.FailedCount -gt 0) { Write-Error "Failed '$($result.FailedCount)' tests." }
+stages:
+  - stage: PesterTests
+    displayName: 'Run Pester Tests'
+    jobs:
+      - job: PesterJob
+        displayName: 'Pester Testing Job'
+        steps:
+          - task: PowerShell@2
+            displayName: 'Install latest Pester'
+            inputs:
+              targetType: 'inline'
+              script: |
+                Install-Module -Name Pester -Force -SkipPublisherCheck
+                Import-Module Pester -PassThru
 
-- task: PublishTestResults@2
-  condition: succeededOrFailed()
-  inputs:
-    testResultsFormat: 'NUnit'
-    testResultsFiles: '**/TEST-*.xml'
-    testRunTitle: 'Pester Tests'
+          - task: PowerShell@2
+            displayName: 'Download File'
+            inputs:
+              targetType: 'inline'
+              script: |
+                $url = "https://raw.githubusercontent.com/WinHub001/pestertest/main/app.json.Tests.ps1"
+                $outputPath = "$(Build.SourcesDirectory)\app.json.Tests.ps1"
+                
+                Invoke-WebRequest -Uri $url -OutFile $outputPath
+                
+                if (Test-Path $outputPath) {
+                  Write-Host "File downloaded successfully to $outputPath"
+                } else {
+                  Write-Error "Failed to download file"
+                  exit 1
+                }
 
-- task: PublishCodeCoverageResults@2
-  inputs:
-    codeCoverageTool: 'JaCoCo'
-    summaryFileLocation: '**/coverage.xml'
-    reportDirectory: '**/coverage'
+          - task: PowerShell@2
+            displayName: 'Run Pester Tests'
+            inputs:
+              targetType: 'inline'
+              script: |
+                $result = Invoke-Pester -Path "$(System.DefaultWorkingDirectory)/app.json.Tests.ps1" -PassThru -OutputFormat NUnitXml -OutputFile TestResults/test-results.xml
+                if ($result.FailedCount -gt 0) { Write-Error "Failed '$($result.FailedCount)' tests." }
+
+          - task: PublishTestResults@2
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: 'NUnit'
+              testResultsFiles: '**/TEST-*.xml'
+              testRunTitle: 'Pester Tests'
+
+          - task: PublishCodeCoverageResults@2
+            inputs:
+              codeCoverageTool: 'JaCoCo'
+              summaryFileLocation: '**/coverage.xml'
+              reportDirectory: '**/coverage'
+
+  - stage: CodeQuality
+    displayName: 'Code Quality Checks'
+    dependsOn: PesterTests
+    condition: succeeded()  # Only run if Pester tests pass
+    jobs:
+      - job: ALLinting
+        displayName: 'AL Code Linting'
+        steps:
+          - checkout: self
+            fetchDepth: 1
+
+          - task: PowerShell@2
+            displayName: 'Lint AL Code Files'
+            inputs:
+              targetType: 'inline'
+              script: |
+                $sourcePath = "$(Build.SourcesDirectory)"
+                $alFiles = Get-ChildItem -Path $sourcePath -Filter "*.al" -Recurse
+
+                if ($alFiles.Count -eq 0) {
+                  Write-Host "No AL files found in $sourcePath"
+                } else {
+                  Write-Host "Found $($alFiles.Count) AL files:"
+                  foreach ($file in $alFiles) {
+                    Write-Host "Linting $($file.FullName)"
+                    $output = & "$(Build.SourcesDirectory)/.scripts/lint-test.ps1" -FilePath $file.FullName
+                  }
+                }
+              failOnStderr: false
+              pwsh: true
+
+          - task: PublishTestResults@2
+            condition: always()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: '**/lint-result.xml'
+              testRunTitle: 'AL Lint Results'
+              failTaskOnFailedTests: false
+              failTaskOnMissingResultsFile: false
