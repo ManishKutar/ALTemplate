@@ -117,13 +117,22 @@ stages:
                 $sourcePath = "$(Build.SourcesDirectory)"
                 $alFiles = Get-ChildItem -Path $sourcePath -Filter "*.al" -Recurse
 
+                
                 if ($alFiles.Count -eq 0) {
                   Write-Host "No AL files found in $sourcePath"
                 } else {
                   Write-Host "Found $($alFiles.Count) AL files:"
+                  $hasErrors = $false
                   foreach ($file in $alFiles) {
                     Write-Host "Linting $($file.FullName)"
                     $output = & "$(Build.SourcesDirectory)/lint-test.ps1" -FilePath $file.FullName
+                    if ($LASTEXITCODE -ne 0) {
+                      $hasErrors = $true
+                    }
+                  }
+                  if ($hasErrors) {
+                    Write-Error "Linting errors detected."
+                    exit 1
                   }
                 }
               failOnStderr: false
