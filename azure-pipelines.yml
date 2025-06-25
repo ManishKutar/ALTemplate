@@ -84,7 +84,7 @@ stages:
   - stage: CodeQuality
     displayName: 'Code Quality Checks'
     dependsOn: PesterTests
-    condition: succeeded()  # Only run if Pester tests pass
+    condition: always()  # Only run if Pester tests pass
     jobs:
       - job: ALLinting
         displayName: 'AL Code Linting'
