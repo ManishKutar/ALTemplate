@@ -115,25 +115,18 @@ stages:
               targetType: 'inline'
               script: |
                 $sourcePath = "$(Build.SourcesDirectory)"
-                $alFiles = Get-ChildItem -Path $sourcePath -Filter "*.al" -Recurse
-
+                $alFiles = Get-ChildItem -Path $sourcePath -Filter "*.al" -Recurse | Select-Object -ExpandProperty FullName
                 
                 if ($alFiles.Count -eq 0) {
-                  Write-Host "No AL files found in $sourcePath"
+                  Write-Host "No AL files found in $sourcePath"
                 } else {
-                  Write-Host "Found $($alFiles.Count) AL files:"
-                  $hasErrors = $false
-                  foreach ($file in $alFiles) {
-                    Write-Host "Linting $($file.FullName)"
-                    $output = & "$(Build.SourcesDirectory)/lint-test.ps1" -FilePath $file.FullName
-                    if ($LASTEXITCODE -ne 0) {
-                      $hasErrors = $true
-                    }
-                  }
-                  if ($hasErrors) {
-                    Write-Error "Linting errors detected."
-                    exit 1
-                  }
+                  Write-Host "Found $($alFiles.Count) AL files"
+                  $fileList = $alFiles -join "`n"
+                  $output = & "$(Build.SourcesDirectory)/lint-test.ps1" -FilePaths $fileList -OutputFile "$(Build.SourcesDirectory)/lint-result.xml"
+                  if ($LASTEXITCODE -ne 0) {
+                    Write-Error "Linting errors detected."
+                    exit 1
+                  }
                 }
               failOnStderr: false
               pwsh: true
